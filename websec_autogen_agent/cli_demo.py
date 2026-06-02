@@ -5,7 +5,8 @@ from websec_autogen_agent.tools.security_checks import (
     fetch_homepage,
     check_url_accessibility,
     check_https,
-    check_security_headers
+    check_security_headers,
+    check_cookie_security,
 )
 
 
@@ -42,15 +43,16 @@ def main():
 
     if not homepage["ok"]:
         print(homepage["error"])
-
-    print(f"状态码：{homepage['status_code']}")
-    print(f"响应头数量：{len(homepage['headers'])}")
-    print(f"页面内容长度：{len(homepage['text'])}")
+    else:
+        print(f"状态码：{homepage['status_code']}")
+        print(f"响应头数量：{len(homepage['headers'])}")
+        print(f"页面内容长度：{len(homepage['text'])}")
 
     checks = [
         check_url_accessibility(homepage),
         check_https(result["url"]),
         check_security_headers(homepage),
+        check_cookie_security(homepage),
     ]
 
     print("\n基础安全检查结果：")
