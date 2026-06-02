@@ -1,6 +1,11 @@
 import argparse
 
-from websec_autogen_agent.tools.security_checks import normalize_url
+from websec_autogen_agent.tools.security_checks import (
+    normalize_url,
+    fetch_homepage,
+    check_url_accessibility,
+    check_https,
+)
 
 
 def main():
@@ -29,6 +34,31 @@ def main():
 
     print("\n标准化后的URL:")
     print(result["url"])
+
+    homepage = fetch_homepage(result["url"])
+
+    print("\n首页请求结果：")
+
+    if not homepage["ok"]:
+        print(homepage["error"])
+
+    print(f"状态码：{homepage['status_code']}")
+    print(f"响应头数量：{len(homepage['headers'])}")
+    print(f"页面内容长度：{len(homepage['text'])}")
+
+    checks = [
+        check_url_accessibility(homepage),
+        check_https(result["url"]),
+    ]
+
+    print("\n基础安全检查结果：")
+
+    for check in checks:
+        print(f"\n{check['name']}")
+        print(f"状态：{check['status']}")
+        print(f"风险：{check['risk']}")
+        print(f"细节：{check['detail']}")
+        print(f"建议：{check['suggestion']}")
 
 if __name__ == "__main__":
     main()
