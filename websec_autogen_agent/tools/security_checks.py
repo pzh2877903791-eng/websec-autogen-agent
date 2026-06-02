@@ -168,3 +168,56 @@ def check_https(url:str) -> dict:
         "detail": "URL 协议无法识别。",
         "suggestion": "请使用 http:// 或 https:// 开头的 URL。"
     }
+
+def check_security_headers(homepage:dict) -> dict:
+    """
+    检查目标网站是否配置常见 HTTP 安全响应头
+    """
+    if not homepage["ok"]:
+        return {
+            "name": "安全响应头检查",
+            "status": "跳过",
+            "risk": "低危",
+            "detail": "首页请求失败，无法检查响应头。",
+            "suggestion": "请先确认目标网站可以正常访问。"
+        }
+
+    headers = homepage["headers"]
+
+    lower_headers = {
+        key.lower():value
+        for key, value in headers.items()
+    }
+
+    required_headers = {
+        "content-security-policy":"限制页面可以加载哪些脚本、样式和资源，降低 XSS 风险。",
+        "strict-transport-security":"强制浏览器以后使用 HTTPS 访问网站。",
+        "x-frame-options":"防止浏览器错误猜测文件类型。",
+        "x-content-type-options":"防止浏览器错误猜测文件类型。",
+        "referrer-policy":"控制浏览器跳转时携带多少来源信息",
+        "permissions-policy":"限制摄像头、麦克风、定位等浏览器能力。"
+    }
+
+    missing_headers = []
+
+    for header_name in required_headers:
+        if header_name not in lower_headers:
+            missing_headers.append(header_name)
+
+    if not missing_headers:
+        return {
+            "name": "安全响应头检查",
+            "status": "通过",
+            "risk": "低危",
+            "detail": "目标网站已配置常见安全响应头。",
+            "suggestion": "继续保持安全响应头配置，并定期检查策略是否符合业务需求。"
+        }
+
+    return {
+        "name": "安全响应头检查",
+        "status": "需关注",
+        "risk": "中危",
+        "detail": f"缺少以下安全响应头：{','.join(missing_headers)}。",
+        "suggestion": "建议根据业务情况逐步补充安全响应头，优先关注 CSP、HSTS、X-Frame-Options 和 X-Content-Type-Options。"
+    }
+

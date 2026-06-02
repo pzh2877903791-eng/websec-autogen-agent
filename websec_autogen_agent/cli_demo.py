@@ -5,6 +5,7 @@ from websec_autogen_agent.tools.security_checks import (
     fetch_homepage,
     check_url_accessibility,
     check_https,
+    check_security_headers
 )
 
 
@@ -49,6 +50,7 @@ def main():
     checks = [
         check_url_accessibility(homepage),
         check_https(result["url"]),
+        check_security_headers(homepage),
     ]
 
     print("\n基础安全检查结果：")
