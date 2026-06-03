@@ -236,7 +236,7 @@ def check_security_headers(homepage:dict) -> dict:
         "status": "需关注",
         "risk": "中危",
         "detail": f"缺少以下安全响应头：{', '.join(missing_headers)}。",
-        "suggestion": "建议根据业务情况逐步补充安全响应头，优先关注 CSP、HSTS、X-Frame-Options 和 X-Content-Type-Options。"
+        "suggestion": f"建议根据业务情况逐步补充缺失的安全响应头：{', '.join(missing_headers)}。"
     }
 
 def check_cookie_security(homepage:dict) -> dict:
@@ -295,7 +295,7 @@ def check_cookie_security(homepage:dict) -> dict:
         "status": "需关注",
         "risk": "中危",
         "detail": "发现 Cookie 安全属性不完整：" + "； ".join(weak_cookie_details),
-        "suggestion": "建议为敏感 Cookie 配置 Secure、HttpOnly 和 SameSite 属性，降低会话泄露、XSS 窃取 Cookie 和 CSRF 风险。"
+        "suggestion": "建议先确认这些 Cookie 的业务用途；如果承载会话、身份标识或敏感业务状态，应配置 Secure、HttpOnly 和 SameSite 属性。"
     }
 
 def is_soft_404_page(text: str) -> bool:

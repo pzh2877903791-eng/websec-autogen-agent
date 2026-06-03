@@ -75,6 +75,10 @@ def main():
     for index, item in enumerate(audit_result["advice"], start=1):
         print(f"{index}. {item}")
 
+    if audit_result.get("llm_advice"):
+        print("\nDeepSeek 综合建议：")
+        print(audit_result["llm_advice"])
+
     report = format_markdown_report(audit_result)
 
     report_target = audit_result["normalized_url"] or audit_result["target"]

@@ -53,14 +53,23 @@ def format_markdown_report(audit_result: dict) -> str:
 
         lines.append("")
 
+    section_number = 5
+
+    if audit_result.get("llm_advice"):
+        lines.append(f"## {section_number}. DeepSeek 综合建议")
+        lines.append("")
+        lines.append(audit_result["llm_advice"])
+        lines.append("")
+        section_number += 1
+
     if audit_result["stopped_reason"]:
-        lines.append("## 5. 提前停止原因")
+        lines.append(f"## {section_number}. 提前停止原因")
         lines.append("")
         lines.append(audit_result["stopped_reason"])
         lines.append("")
-        lines.append("## 6. 安全边界")
-    else:
-        lines.append("## 5. 安全边界")
+        section_number += 1
+
+    lines.append(f"## {section_number}. 安全边界")
     lines.append("")
     lines.append("本工具仅进行基础 Web 安全配置检查，不进行密码爆破、漏洞利用、高并发扫描或攻击性测试。")
     lines.append("请仅对自己拥有或已获得明确授权的网站使用本工具。")
