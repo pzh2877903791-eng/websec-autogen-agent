@@ -13,8 +13,9 @@ def run_security_audit(raw_url:str) -> dict:
     normalize_result = normalize_url(raw_url)
 
     if not normalize_result["ok"]:
-
         checks = []
+        summary = calculate_audit_summary(checks)
+        advice = generate_rule_based_advice(checks, summary)
 
         return{
             "ok": False,
@@ -22,7 +23,8 @@ def run_security_audit(raw_url:str) -> dict:
             "normalized_url": "",
             "homepage":None,
             "checks":checks,
-            "summary":calculate_audit_summary(checks),
+            "summary": summary,
+            "advice": advice,
             "error":normalize_result["error"],
             "stopped_reason":"URL 校验失败，无法继续审计。"
         }
@@ -35,13 +37,17 @@ def run_security_audit(raw_url:str) -> dict:
     ]
 
     if not homepage["ok"]:
+        summary = calculate_audit_summary(checks)
+        advice = generate_rule_based_advice(checks, summary)
+
         return{
             "ok": False,
             "target": raw_url,
             "normalized_url": normalized_url,
             "homepage":homepage,
             "checks":checks,
-            "summary": calculate_audit_summary(checks),
+            "summary": summary,
+            "advice": advice,
             "error":normalize_result["error"],
             "stopped_reason":"首页无法访问，已停止后续检查。"
         }
@@ -53,13 +59,17 @@ def run_security_audit(raw_url:str) -> dict:
         check_sensitive_paths(normalized_url, homepage),
     ])
 
+    summary = calculate_audit_summary(checks)
+    advice = generate_rule_based_advice(checks, summary)
+
     return {
         "ok": True,
         "target": raw_url,
         "normalized_url": normalized_url,
         "homepage": homepage,
         "checks": checks,
-        "summary": calculate_audit_summary(checks),
+        "summary": summary,
+        "advice": advice,
         "error": None,
         "stopped_reason": None,
     }
@@ -130,3 +140,33 @@ def calculate_audit_summary(checks: list[dict]) -> dict:
         "medium_count": medium_count,
         "attention_count": attention_count
     }
+
+def generate_rule_based_advice(checks: list[dict], summary: dict) -> list[str]:
+    """
+    根据检查结果和审计摘要生成规则化综合建议。
+    """
+    advice = []
+
+    if summary["high_count"] > 0:
+        advice.append("存在高危风险项，请优先处理可能导致敏感信息泄露或服务不可用的问题。")
+
+    elif summary["medium_count"] > 0:
+        advice.append("存在中危配置问题，建议优先处理安全响应头、Cookie 安全属性和 HTTPS 相关配置。")
+
+    elif summary["attention_count"] > 0:
+        advice.append("当前未发现明显高危问题，但存在需要人工确认的配置项。")
+
+    else:
+        advice.append("当前基础配置风险较低，建议保持定期审计和日志监控。")
+
+    for check in checks:
+        if check["status"] in ["需关注", "异常"]:
+            advice.append(f"{check['name']}：{check['suggestion']}")
+
+    unique_advice = []
+
+    for item in advice:
+        if item not in unique_advice:
+            unique_advice.append(item)
+
+    return unique_advice

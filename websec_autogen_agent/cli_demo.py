@@ -68,6 +68,11 @@ def main():
     if audit_result["stopped_reason"]:
         print(f"\n{audit_result['stopped_reason']}")
 
+    print("\n综合建议：")
+
+    for index, item in enumerate(audit_result["advice"], start=1):
+        print(f"{index}. {item}")
+
 
 if __name__ == "__main__":
     main()
