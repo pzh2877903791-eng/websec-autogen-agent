@@ -47,6 +47,19 @@ def main():
         print(f"响应头数量：{len(homepage['headers'])}")
         print(f"页面内容长度：{len(homepage['text'])}")
 
+    summary = audit_result["summary"]
+
+    print("\n审计摘要：")
+    print(f"整体状态：{summary['overall_status']}")
+    print(f"整体风险：{summary['overall_risk']}")
+    print(f"安全评分：{summary['security_score']}/100")
+    print(f"检查项数量：{summary['total_checks']}")
+    print(
+        f"高危：{summary['high_count']}，"
+        f"中危：{summary['medium_count']}，"
+        f"需关注/异常：{summary['attention_count']}"
+    )
+
     print("\n基础安全检查结果：")
 
     for check in audit_result["checks"]:
