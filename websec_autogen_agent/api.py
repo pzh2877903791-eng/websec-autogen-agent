@@ -5,7 +5,7 @@ from websec_autogen_agent.core.agents import run_security_audit
 from websec_autogen_agent.tools.export import save_markdown_report
 from websec_autogen_agent.tools.report import format_markdown_report
 from websec_autogen_agent.tools.brief import format_brief_message
-from websec_autogen_agent.integrations.feishu import send_feishu_text_message
+from websec_autogen_agent.integrations.feishu import send_feishu_audit_post_message
 
 
 app = FastAPI(
@@ -80,7 +80,7 @@ def audit_site(request: AuditRequest) -> dict:
     feishu_notification = None
 
     if request.notify_feishu:
-        feishu_notification = send_feishu_text_message(brief_message)
+        feishu_notification = send_feishu_audit_post_message(audit_result, report_path)
 
     return build_public_audit_response(
         audit_result,
