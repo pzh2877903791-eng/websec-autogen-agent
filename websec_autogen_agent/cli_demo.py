@@ -1,15 +1,13 @@
 import argparse
 
-from websec_autogen_agent.tools.security_checks import (
-    normalize_url,
-    fetch_homepage,
-    check_url_accessibility,
-    check_https,
-    check_security_headers,
-    check_cookie_security,
-    check_sensitive_paths,
-)
+from websec_autogen_agent.core.agents import run_security_audit
 
+def print_check_result(check:dict) -> None:
+    print(f"\n{check['name']}")
+    print(f"状态：{check['status']}")
+    print(f"风险：{check['risk']}")
+    print(f"细节：{check['detail']}")
+    print(f"建议：{check['suggestion']}")
 
 def main():
     parser = argparse.ArgumentParser(
@@ -28,17 +26,17 @@ def main():
     print("收到检测目标：")
     print(args.url)
 
-    result = normalize_url(args.url)
+    audit_result = run_security_audit(args.url)
 
-    if not result["ok"]:
+    if not audit_result["normalized_url"]:
         print("\nURL 校验失败：")
-        print(result["error"])
+        print(audit_result["error"])
         return
 
     print("\n标准化后的URL:")
-    print(result["url"])
+    print(audit_result["normalized_url"])
 
-    homepage = fetch_homepage(result["url"])
+    homepage = audit_result["homepage"]
 
     print("\n首页请求结果：")
 
@@ -49,38 +47,14 @@ def main():
         print(f"响应头数量：{len(homepage['headers'])}")
         print(f"页面内容长度：{len(homepage['text'])}")
 
-    checks = [
-        check_url_accessibility(homepage),
-    ]
-
-    if not homepage["ok"]:
-        print("\n基础安全检查结果：")
-
-        for check in checks:
-            print(f"\n{check['name']}")
-            print(f"状态：{check['status']}")
-            print(f"风险：{check['risk']}")
-            print(f"细节：{check['detail']}")
-            print(f"建议：{check['suggestion']}")
-
-        print("\n首页无法访问，已停止后续检查！")
-        return
-
-    checks.extend([
-        check_https(result["url"]),
-        check_security_headers(homepage),
-        check_cookie_security(homepage),
-        check_sensitive_paths(result["url"]),
-    ])
-
     print("\n基础安全检查结果：")
 
-    for check in checks:
-        print(f"\n{check['name']}")
-        print(f"状态：{check['status']}")
-        print(f"风险：{check['risk']}")
-        print(f"细节：{check['detail']}")
-        print(f"建议：{check['suggestion']}")
+    for check in audit_result["checks"]:
+        print_check_result(check)
+
+    if audit_result["stopped_reason"]:
+        print(f"\n{audit_result['stopped_reason']}")
+
 
 if __name__ == "__main__":
     main()
