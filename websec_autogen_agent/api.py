@@ -6,8 +6,12 @@ from websec_autogen_agent.tools.export import save_markdown_report
 from websec_autogen_agent.tools.report import format_markdown_report
 from websec_autogen_agent.tools.brief import format_brief_message
 from websec_autogen_agent.integrations.feishu import send_feishu_audit_post_message
-
-
+from websec_autogen_agent.integrations.feishu_events import parse_feishu_message_event
+from fastapi import BackgroundTasks
+from websec_autogen_agent.integrations.feishu_client import (
+    reply_feishu_audit_post_message,
+    reply_feishu_text_message,
+)
 app = FastAPI(
     title="WebSec AutoGen Agent API",
     description="A learning-oriented Web security audit agent API.",
@@ -60,6 +64,79 @@ def health_check() -> dict:
         "service": "websec-autogen-agent",
     }
 
+@app.post("/feishu/events")
+def handle_feishu_event(payload: dict, background_tasks: BackgroundTasks) -> dict:
+    """
+    接收飞书应用机器人的事件回调。
+
+    当前阶段：
+    1. 处理 URL 校验 challenge；
+    2. 解析群消息文本；
+    3. 提取消息中的 URL；
+    4. 暂时只打印，不自动审计和回复。
+    """
+    if payload.get("type") == "url_verification" and "challenge" in payload:
+        return {
+            "challenge": payload["challenge"]
+        }
+
+    if "challenge" in payload:
+        return {
+            "challenge": payload["challenge"]
+        }
+
+    parsed_event = parse_feishu_message_event(payload)
+
+    print("收到飞书事件：")
+    print(parsed_event)
+
+    if parsed_event.get("message_type") == "text":
+        background_tasks.add_task(
+            process_feishu_audit_message,
+            parsed_event,
+        )
+
+    return {
+        "ok": True,
+        "message": "event received",
+        "parsed_event": parsed_event,
+    }
+
+def process_feishu_audit_message(parsed_event: dict) -> None:
+    """
+    后台处理飞书审计消息：
+    1. 检查是否提取到 URL；
+    2. 执行审计；
+    3. 生成摘要；
+    4. 回复飞书消息。
+    """
+    message_id = parsed_event.get("message_id")
+    url = parsed_event.get("url")
+
+    if not message_id:
+        print("飞书事件缺少 message_id，无法回复")
+        return
+
+    if not url:
+        reply_result = reply_feishu_text_message(
+            message_id,
+            "请发送需要审计的网站 URL，例如：审计 https://example.com",
+        )
+        print(f"飞书回复结果：{reply_result}")
+        return
+
+    audit_result = run_security_audit(
+        url,
+        enable_llm=False,
+    )
+
+    reply_result = reply_feishu_audit_post_message(
+        message_id,
+        audit_result,
+        report_path=None,
+    )
+
+    print(f"飞书回复结果：{reply_result}")
 
 @app.post("/audit")
 def audit_site(request: AuditRequest) -> dict:

@@ -45,6 +45,8 @@ class Settings:
     deepseek_model: str = os.getenv("DEEPSEEK_MODEL", "deepseek-chat")
     deepseek_base_url: str = os.getenv("DEEPSEEK_BASE_URL", "https://api.deepseek.com")
 
+    feishu_app_id: str = os.getenv("FEISHU_APP_ID", "")
+    feishu_app_secret: str = os.getenv("FEISHU_APP_SECRET", "")
     feishu_webhook_url: str = os.getenv("FEISHU_WEBHOOK_URL", "")
 
     llm_timeout: int = get_int_env("LLM_TIMEOUT", 30)
@@ -53,6 +55,10 @@ class Settings:
     @property
     def has_deepseek(self) -> bool:
         return bool(self.deepseek_api_key.strip())
+
+    @property
+    def has_feishu_app_credentials(self) -> bool:
+        return bool(self.feishu_app_id.strip() and self.feishu_app_secret.strip())
 
     @property
     def has_feishu_webhook(self) -> bool:
@@ -72,4 +78,5 @@ if __name__ == "__main__":
     print(f"HAS_DEEPSEEK: {settings.has_deepseek}")
     print(f"LLM_TIMEOUT: {settings.llm_timeout}")
     print(f"LLM_RETRIES: {settings.llm_retries}")
+    print(f"HAS_FEISHU_APP_CREDENTIALS: {settings.has_feishu_app_credentials}")
     print(f"HAS_FEISHU_WEBHOOK: {settings.has_feishu_webhook}")

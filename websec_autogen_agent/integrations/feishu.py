@@ -65,91 +65,51 @@ def build_feishu_audit_post(audit_result: dict, report_path: str | None = None) 
 
     content = []
 
-    content.append([
-        {
-            "tag": "text",
-            "text": (
-                f"目标：{target}\n"
-                f"整体状态：{summary['overall_status']}\n"
-                f"整体风险：{summary['overall_risk']}\n"
-                f"安全评分：{summary['security_score']}/100\n"
-                f"检查项：{summary['total_checks']} 项，"
-                f"高危 {summary['high_count']} 项，"
-                f"中危 {summary['medium_count']} 项，"
-                f"需关注/异常 {summary['attention_count']} 项"
-            ),
-        }
-    ])
+    def add_line(text: str) -> None:
+        content.append([
+            {
+                "tag": "text",
+                "text": text,
+            }
+        ])
 
-    content.append([
-        {
-            "tag": "text",
-            "text": "\n重点问题：",
-        }
-    ])
+    add_line(f"目标：{target}")
+    add_line(f"整体状态：{summary['overall_status']}")
+    add_line(f"整体风险：{summary['overall_risk']}")
+    add_line(f"安全评分：{summary['security_score']}/100")
+    add_line(
+        f"检查项：{summary['total_checks']} 项，"
+        f"高危 {summary['high_count']} 项，"
+        f"中危 {summary['medium_count']} 项，"
+        f"需关注/异常 {summary['attention_count']} 项"
+    )
+
+    add_line("重点问题：")
 
     if not problem_checks:
-        content.append([
-            {
-                "tag": "text",
-                "text": "未发现需要重点关注的配置问题。",
-            }
-        ])
+        add_line("未发现需要重点关注的配置问题。")
     else:
         for index, check in enumerate(problem_checks[:3], start=1):
-            content.append([
-                {
-                    "tag": "text",
-                    "text": f"{index}. {check['name']}（{check['risk']}）：{check['detail']}",
-                }
-            ])
+            add_line(
+                f"{index}. {check['name']}（{check['risk']}）：{check['detail']}"
+            )
 
-    content.append([
-        {
-            "tag": "text",
-            "text": "\n综合建议：",
-        }
-    ])
+    add_line("综合建议：")
 
     if not advice:
-        content.append([
-            {
-                "tag": "text",
-                "text": "暂无综合建议。",
-            }
-        ])
+        add_line("暂无综合建议。")
     else:
         for index, item in enumerate(advice[:3], start=1):
-            content.append([
-                {
-                    "tag": "text",
-                    "text": f"{index}. {item}",
-                }
-            ])
+            add_line(f"{index}. {item}")
 
     if audit_result.get("llm_advice"):
-        content.append([
-            {
-                "tag": "text",
-                "text": "\nDeepSeek 综合建议已生成，建议查看完整报告。",
-            }
-        ])
+        add_line("DeepSeek 综合建议已生成，建议查看完整报告。")
 
     if report_path:
-        content.append([
-            {
-                "tag": "text",
-                "text": f"\n报告路径：{report_path}",
-            }
-        ])
+        add_line(f"完整报告已生成，本地路径：{report_path}")
 
     if audit_result["stopped_reason"]:
-        content.append([
-            {
-                "tag": "text",
-                "text": f"\n停止原因：{audit_result['stopped_reason']}",
-            }
-        ])
+        add_line(f"停止原因：{audit_result['stopped_reason']}")
 
     return {
         "zh_cn": {
