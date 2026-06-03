@@ -4,6 +4,7 @@ from pydantic import BaseModel, Field
 from websec_autogen_agent.core.agents import run_security_audit
 from websec_autogen_agent.tools.export import save_markdown_report
 from websec_autogen_agent.tools.report import format_markdown_report
+from websec_autogen_agent.tools.brief import format_brief_message
 
 
 app = FastAPI(
@@ -43,6 +44,7 @@ def build_public_audit_response(audit_result: dict, report_path: str | None = No
         "checks": audit_result["checks"],
         "advice": audit_result["advice"],
         "llm_advice": audit_result.get("llm_advice"),
+        "brief_message": format_brief_message(audit_result, report_path),
         "stopped_reason": audit_result["stopped_reason"],
         "report_path": report_path,
     }
