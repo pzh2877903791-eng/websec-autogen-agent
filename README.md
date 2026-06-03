@@ -1,66 +1,136 @@
 # WebSec AutoGen Agent
 
-A learning-oriented Web security audit agent built from scratch with Python, DeepSeek, FastAPI and AutoGen.
+一个学习型 Web 安全配置审计 Agent。
 
-> 当前版本重点是学习 Agent 的基础结构：工具层负责获取事实，审计执行器负责编排流程，DeepSeek 只基于结构化结果生成防御性建议。
+当前项目已经实现：输入目标网站后，系统可以自动完成基础 Web 安全配置检查，生成审计摘要、修复建议、Markdown 报告，并支持通过飞书群机器人进行交互式审计。
+
+> 当前版本重点是实现 Agent 的基础闭环：工具拿事实，审计执行器编排流程，规则层生成建议，LLM 层基于结构化结果增强解释，飞书机器人作为交互入口。
+
+---
 
 ## 1. 项目简介
 
-WebSec AutoGen Agent 是一个学习型 Web 安全配置审计工具。
+WebSec AutoGen Agent 是一个面向学习和防御性安全审计的 Web 安全配置检查工具。
 
-它可以对授权网站执行基础配置检查，包括：
+用户可以通过 CLI、FastAPI 接口或飞书群机器人提交目标 URL，系统会对目标站点进行基础安全配置检查，并返回结构化审计结果。
 
-- URL 可访问性检查
+本项目不进行攻击性测试，不进行漏洞利用，不进行密码爆破，不进行高并发扫描，仅用于授权环境下的基础安全配置审计和 Agent 架构学习。
+
+---
+
+## 2. 当前已实现功能
+
+### 2.1 基础安全检查
+
+- URL 标准化
+- 首页可访问性检查
 - HTTPS 使用检查
 - 常见安全响应头检查
 - Cookie 安全属性检查
-- 常见公开路径 / 敏感路径检查
-- 审计摘要与安全评分
-- 本地规则综合建议
+- 常见公开路径 / 敏感文件路径检查
+- 软 404 页面简单过滤
+- 首页不可访问时自动提前停止后续检查
+
+### 2.2 审计摘要
+
+系统会根据检查结果生成：
+
+- 整体状态
+- 整体风险等级
+- 安全评分
+- 检查项数量
+- 高危 / 中危 / 需关注数量统计
+
+### 2.3 综合建议
+
+系统支持两类建议：
+
+- 本地规则建议
 - DeepSeek 综合建议
-- Markdown 报告导出
 
-本项目仅用于防御性安全配置审计和 Agent 学习，不进行密码爆破、漏洞利用、高并发扫描、绕过认证测试或攻击性测试。
+DeepSeek 只基于结构化 JSON 审计结果生成说明，不直接猜测目标网站是否存在漏洞。
 
-## 2. 当前功能
+### 2.4 报告导出
 
-### 基础检查
+支持自动生成 Markdown 审计报告，保存到：
 
-- 检查目标 URL 是否可访问
-- 检查目标是否使用 HTTPS
-- 检查是否缺少常见安全响应头
-- 检查 Cookie 是否缺少 Secure、HttpOnly、SameSite 等属性
-- 检查 robots.txt、security.txt、.env、.git/config、backup.zip、admin 等路径的访问情况
-- 对软 404 页面进行简单过滤，减少误报
+```text
+reports/
+```
 
-### 审计结果
+报告内容包括：
 
-- 生成整体状态
-- 生成整体风险等级
-- 计算安全评分
-- 统计高危、中危、需关注 / 异常数量
-- 生成本地规则建议
-- 可选调用 DeepSeek 生成综合建议
+- 检测目标
+- 审计摘要
+- 检查结果
+- 综合建议
+- DeepSeek 综合建议
+- 安全边界说明
 
-### 报告导出
+### 2.5 FastAPI 接口
 
-- 自动生成 Markdown 报告
-- 报告保存到 `reports/` 目录
+已提供：
+
+```text
+GET /health
+POST /audit
+POST /feishu/events
+```
+
+其中 `/audit` 支持：
+
+- 是否导出 Markdown 报告
+- 是否启用 DeepSeek
+- 是否推送飞书自定义 webhook 通知
+
+### 2.6 飞书机器人
+
+当前支持两类飞书能力：
+
+#### 自定义 webhook 通知
+
+系统可以主动把审计摘要推送到飞书群。
+
+#### 飞书应用机器人交互
+
+支持在飞书群中 @机器人 触发审计：
+
+```text
+@WebSecBot 审计 https://doubao.com
+```
+
+机器人会自动完成：
+
+```text
+接收群消息
+提取目标 URL
+执行 Web 安全配置审计
+生成审计摘要
+以富文本消息回复到群聊
+```
+
+---
 
 ## 3. 技术栈
 
 - Python 3.11
 - requests
 - python-dotenv
+- FastAPI
+- Uvicorn
 - DeepSeek Chat API
+- Feishu Open Platform
+- cpolar
 - Markdown 报告
 
 后续计划接入：
 
-- FastAPI
-- AutoGen
-- 飞书机器人
+- AutoGen 多角色编排
 - PDF 报告导出
+- 单元测试
+- 部署上线
+
+---
 
 ## 4. 项目结构
 
@@ -72,6 +142,7 @@ websec-autogen-agent/
 ├── reports/
 └── websec_autogen_agent/
     ├── __init__.py
+    ├── api.py
     ├── cli_demo.py
     ├── core/
     │   ├── __init__.py
@@ -82,21 +153,27 @@ websec-autogen-agent/
     │   ├── __init__.py
     │   ├── security_checks.py
     │   ├── report.py
-    │   └── export.py
+    │   ├── export.py
+    │   └── brief.py
     └── integrations/
-        └── __init__.py
+        ├── __init__.py
+        ├── feishu.py
+        ├── feishu_client.py
+        └── feishu_events.py
 ```
+
+---
 
 ## 5. 快速开始
 
-### 1. 克隆项目
+### 5.1 克隆项目
 
 ```bash
-git clone https://github.com/pzh2877903791-eng/websec-autogen-agent
+git clone <your-repo-url>
 cd websec-autogen-agent
 ```
 
-### 2. 创建 Python 环境
+### 5.2 创建 Python 环境
 
 使用 conda：
 
@@ -105,43 +182,50 @@ conda create -n websecagent python=3.11
 conda activate websecagent
 ```
 
-或者使用你自己的 Python 3.11 环境。
+或者使用已有 Python 3.11 环境。
 
-### 3. 安装依赖
+### 5.3 安装依赖
 
 ```bash
 pip install -r requirements.txt
 ```
 
-### 4. 配置环境变量
+### 5.4 配置环境变量
 
-复制配置模板：
+复制环境变量模板：
 
 ```bash
 cp .env.example .env
 ```
 
-如果不使用 DeepSeek，可以保持：
+`.env.example` 示例：
 
 ```env
 ENABLE_LLM=false
-```
-
-如果使用 DeepSeek，需要在 `.env` 中配置：
-
-```env
-ENABLE_LLM=true
 DEEPSEEK_API_KEY=your_deepseek_api_key_here
 DEEPSEEK_MODEL=deepseek-chat
 DEEPSEEK_BASE_URL=https://api.deepseek.com
 LLM_TIMEOUT=30
 LLM_RETRIES=2
+
 AUDIT_ENABLE_AUTOGEN=false
+
+FEISHU_WEBHOOK_URL=your_feishu_custom_bot_webhook_url_here
+
+FEISHU_APP_ID=your_feishu_app_id_here
+FEISHU_APP_SECRET=your_feishu_app_secret_here
 ```
 
-注意：不要提交 `.env` 文件。
+注意：
 
-## 6. 运行方式
+```text
+不要提交 .env
+不要把真实 API Key、Webhook、App Secret 提交到 GitHub
+```
+
+---
+
+## 6. CLI 使用方式
 
 检测一个网站：
 
@@ -155,63 +239,193 @@ python -m websec_autogen_agent.cli_demo https://example.com
 python -m websec_autogen_agent.cli_demo example.com
 ```
 
-程序会自动标准化为：
+系统会自动标准化为：
 
 ```text
 https://example.com
 ```
 
-## 7. 输出结果示例
+---
+
+## 7. FastAPI 使用方式
+
+启动服务：
+
+```bash
+uvicorn websec_autogen_agent.api:app --reload --port 8000
+```
+
+访问接口文档：
 
 ```text
-收到检测目标：
-https://example.com
+http://127.0.0.1:8000/docs
+```
 
-标准化后的URL:
-https://example.com
+健康检查：
 
-首页请求结果：
-状态码：200
-响应头数量：11
-页面内容长度：528
+```bash
+curl http://127.0.0.1:8000/health
+```
 
-审计摘要：
+调用审计接口：
+
+```bash
+curl -s -X POST http://127.0.0.1:8000/audit \
+  -H "Content-Type: application/json" \
+  -d '{"url":"https://doubao.com","export_report":true,"enable_llm":false}' \
+  | python -m json.tool
+```
+
+请求参数说明：
+
+| 参数 | 类型 | 说明 |
+|---|---|---|
+| url | string | 需要审计的网站 URL |
+| export_report | bool | 是否导出 Markdown 报告 |
+| enable_llm | bool | 本次请求是否启用 DeepSeek |
+| notify_feishu | bool | 是否通过自定义 webhook 主动推送飞书摘要 |
+
+---
+
+## 8. 飞书应用机器人使用方式
+
+### 8.1 本地启动 FastAPI
+
+```bash
+uvicorn websec_autogen_agent.api:app --reload --port 8000
+```
+
+### 8.2 使用 cpolar 暴露本地服务
+
+```bash
+cpolar http 8000
+```
+
+得到公网地址，例如：
+
+```text
+https://xxxx.cpolar.top
+```
+
+### 8.3 配置飞书事件订阅
+
+在飞书开放平台中，将事件订阅地址配置为：
+
+```text
+https://xxxx.cpolar.top/feishu/events
+```
+
+需要订阅接收消息事件。
+
+### 8.4 群聊中触发审计
+
+在飞书群中发送：
+
+```text
+@WebSecBot 审计 https://doubao.com
+```
+
+机器人会自动回复 Web 安全配置审计摘要。
+
+---
+
+## 9. 飞书机器人演示效果
+
+用户发送：
+
+```text
+@WebSecBot 审计 https://doubao.com
+```
+
+机器人回复内容包括：
+
+```text
+Web 安全配置审计摘要
+
+目标：https://doubao.com
 整体状态：需关注
 整体风险：中危
 安全评分：70/100
-检查项数量：5
-高危：0，中危：2，需关注/异常：3
 
-基础安全检查结果：
-...
+重点问题：
+1. 安全响应头检查
+2. Cookie 安全属性检查
 
 综合建议：
-...
-
-DeepSeek 综合建议：
-...
-
-Markdown 报告已保存：reports/example.com_20260603_175901.md
+1. 优先处理安全响应头配置
+2. 确认 Cookie 用途并补充安全属性
 ```
 
-## 8. 报告说明
+---
 
-程序会在 `reports/` 目录下生成 Markdown 报告。
+## 10. Agent 架构说明
 
-报告内容包括：
+本项目不是让大模型直接判断网站是否安全。
 
-- 检测目标
-- 审计摘要
-- 具体检查结果
-- 本地规则综合建议
-- DeepSeek 综合建议
-- 安全边界说明
+核心设计是：
 
-`reports/*.md` 默认不会提交到 GitHub，只保留 `reports/.gitkeep`。
+```text
+工具层：获取真实事实
+审计执行器：组织工具调用
+规则层：生成基础建议
+LLM 层：基于事实解释结果
+报告层：输出可读报告
+交互层：CLI / FastAPI / 飞书机器人
+```
 
-## 9. 安全边界
+也就是：
 
-本项目只进行基础 Web 安全配置检查。
+```text
+Agent = 目标输入 + 工具调用 + 流程编排 + 结果解释 + 多端输出
+```
+
+当前项目已经形成了初级 Agent 闭环：
+
+```text
+用户输入 URL
+↓
+URL 标准化
+↓
+首页请求
+↓
+安全工具检查
+↓
+审计摘要
+↓
+规则建议 / DeepSeek 建议
+↓
+Markdown 报告 / FastAPI JSON / 飞书富文本回复
+```
+
+---
+
+## 11. AutoGen 规划
+
+项目名称中的 AutoGen 表示后续计划接入 AutoGen 多角色编排。
+
+当前版本已经完成基础 Agent 审计闭环，但尚未正式启用 AutoGen 多智能体协作。
+
+后续 AutoGen 设计计划：
+
+```text
+ScannerAgent：调用现有安全检查工具，获取结构化事实
+RiskAnalystAgent：分析风险优先级和修复顺序
+ReportAgent：生成面向用户的审计总结
+CoordinatorAgent：负责任务分配和结果整合
+```
+
+设计原则：
+
+```text
+AutoGen 不替代工具检查
+AutoGen 只基于工具结果进行多角色分析和表达
+```
+
+---
+
+## 12. 安全边界
+
+本项目仅进行基础 Web 安全配置检查。
 
 不会执行：
 
@@ -224,62 +438,9 @@ Markdown 报告已保存：reports/example.com_20260603_175901.md
 
 请仅对自己拥有或已经获得明确授权的网站使用本工具。
 
-## 10. Agent 学习目标
+---
 
-本项目的核心学习目标不是“写一个扫描脚本”，而是理解 Agent 的基本结构：
-
-```text
-工具层：获取真实事实
-审计执行器：组织工具调用
-规则层：生成基础建议
-LLM 层：基于事实解释结果
-报告层：输出可读报告
-```
-
-也就是：
-
-```text
-Agent = 目标输入 + 工具调用 + 流程编排 + 结果解释 + 输出报告
-```
-
-当前项目已经形成了一个初级 Agent 架构：
-
-```text
-CLI 入口
-↓
-审计执行器
-↓
-工具函数
-↓
-规则建议
-↓
-DeepSeek 综合建议
-↓
-Markdown 报告
-```
-
-## 11. 设计原则
-
-### 工具拿事实
-
-安全检查结果必须来自工具函数，例如：
-
-- `check_https()`
-- `check_security_headers()`
-- `check_cookie_security()`
-- `check_sensitive_paths()`
-
-### LLM 只解释事实
-
-DeepSeek 只基于结构化 JSON 结果生成建议，不应该编造工具没有检测到的风险。
-
-### 先本地，后增强
-
-没有 DeepSeek API Key 时，项目仍然可以使用本地规则建议正常运行。
-
-启用 DeepSeek 后，DeepSeek 只作为建议增强层，不影响基础审计流程。
-
-## 12. Roadmap
+## 13. Roadmap
 
 - [√] CLI 输入 URL
 - [√] URL 标准化
@@ -288,38 +449,45 @@ DeepSeek 只基于结构化 JSON 结果生成建议，不应该编造工具没�
 - [√] 安全响应头检查
 - [√] Cookie 安全属性检查
 - [√] 敏感路径检查
+- [√] 软 404 简单过滤
 - [√] 审计摘要与安全评分
 - [√] 本地规则建议
 - [√] Markdown 报告导出
 - [√] DeepSeek 综合建议
-- [ ] FastAPI 接口
+- [√] FastAPI 接口
+- [√] 飞书自定义 Webhook 通知
+- [√] 飞书应用机器人事件回调
+- [√] 飞书群聊 @机器人触发审计
+- [√] 飞书富文本审计摘要回复
 - [ ] AutoGen 多角色编排
-- [ ] 飞书机器人接入
 - [ ] PDF 报告导出
 - [ ] 单元测试
+- [ ] 部署上线
 
-## 13. Git 提交建议
+---
 
-当前阶段推荐提交：
+## 14. 答辩演示建议
 
-```bash
-git status
-git add README.md
-git commit -m "docs: add project README"
-git status
+推荐演示路径：
+
+```text
+1. 启动 FastAPI
+2. 启动 cpolar
+3. 在飞书群中 @WebSecBot 审计 https://doubao.com
+4. 展示机器人自动回复审计摘要
+5. 展示 FastAPI /docs
+6. 展示生成的 Markdown 报告
 ```
 
-如果你还没有提交 DeepSeek 相关代码，可以先提交功能代码，再提交 README：
+答辩时可以强调：
 
-```bash
-git add websec_autogen_agent/core/llm.py websec_autogen_agent/core/agents.py websec_autogen_agent/cli_demo.py websec_autogen_agent/tools/report.py websec_autogen_agent/tools/security_checks.py
-git commit -m "feat: add DeepSeek advisory generation"
-
-git add README.md
-git commit -m "docs: add project README"
+```text
+本项目不是单纯扫描脚本，而是一个具备工具调用、流程编排、结果解释和飞书交互能力的 Web 安全配置审计 Agent。
 ```
 
-## 14. 免责声明
+---
+
+## 15. 免责声明
 
 本工具仅用于学习和授权环境下的防御性安全配置审计。
 
