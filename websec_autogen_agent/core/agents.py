@@ -10,7 +10,7 @@ from websec_autogen_agent.tools.security_checks import (
 
 from websec_autogen_agent.core.llm import generate_deepseek_advice
 
-def run_security_audit(raw_url:str) -> dict:
+def run_security_audit(raw_url:str, enable_llm: bool = True) -> dict:
     normalize_result = normalize_url(raw_url)
 
     if not normalize_result["ok"]:
@@ -65,13 +65,16 @@ def run_security_audit(raw_url:str) -> dict:
     summary = calculate_audit_summary(checks)
     advice = generate_rule_based_advice(checks, summary)
 
-    llm_advice = generate_deepseek_advice({
-        "target": raw_url,
-        "normalized_url": normalized_url,
-        "checks": checks,
-        "summary": summary,
-        "rule_based_advice": advice,
-    })
+    llm_advice = None
+
+    if enable_llm:
+        llm_advice = generate_deepseek_advice({
+            "target": raw_url,
+            "normalized_url": normalized_url,
+            "checks": checks,
+            "summary": summary,
+            "rule_based_advice": advice,
+        })
 
     return {
         "ok": True,
