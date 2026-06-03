@@ -1,6 +1,8 @@
 import argparse
 
 from websec_autogen_agent.core.agents import run_security_audit
+from websec_autogen_agent.tools.export import save_markdown_report
+from websec_autogen_agent.tools.report import format_markdown_report
 
 def print_check_result(check:dict) -> None:
     print(f"\n{check['name']}")
@@ -73,6 +75,12 @@ def main():
     for index, item in enumerate(audit_result["advice"], start=1):
         print(f"{index}. {item}")
 
+    report = format_markdown_report(audit_result)
+
+    report_target = audit_result["normalized_url"] or audit_result["target"]
+    report_path = save_markdown_report(report, report_target)
+
+    print(f"\nMarkdown 报告已保存：{report_path}")
 
 if __name__ == "__main__":
     main()
