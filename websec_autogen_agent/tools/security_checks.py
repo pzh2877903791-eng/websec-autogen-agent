@@ -1,4 +1,4 @@
-from urllib.parse import urlparse
+from urllib.parse import urlparse, urljoin
 
 import requests
 
@@ -297,3 +297,159 @@ def check_cookie_security(homepage:dict) -> dict:
         "detail": "发现 Cookie 安全属性不完整：" + "； ".join(weak_cookie_details),
         "suggestion": "建议为敏感 Cookie 配置 Secure、HttpOnly 和 SameSite 属性，降低会话泄露、XSS 窃取 Cookie 和 CSRF 风险。"
     }
+
+def is_soft_404_page(text: str) -> bool:
+    """
+    判断一个返回 200 的页面是否其实是“页面不存在”。
+    """
+    soft_404_keywords = [
+        "页面不存在",
+        "未找到页面",
+        "请确认网址是否正确",
+        "返回首页",
+        "not found",
+        "page not found",
+        "404"
+    ]
+
+    lower_text = text.lower()
+
+    for keyword in soft_404_keywords:
+        if keyword.lower() in lower_text:
+            return True
+
+    return False
+
+def check_sensitive_paths(url: str, homepage: dict | None = None, timeout: int = 5) -> dict:
+    """
+    检查常见公开文件和敏感路径是否可以直接访问。
+    """
+    if homepage is not None and not homepage["ok"]:
+        return {
+            "name": "敏感路径检查",
+            "status": "跳过",
+            "risk": "低危",
+            "detail": "首页请求失败，无法可靠检查敏感路径。",
+            "suggestion": "请先确认目标网站可以正常访问，再进行敏感路径检查。"
+        }
+
+    public_info_paths = {
+        "/robots.txt": "公开爬虫规则文件，通常可以存在。",
+        "/.well-known/security.txt": "安全联系方式文件，通常可以存在。"
+    }
+
+    sensitive_file_paths = {
+        "/.env": "环境变量文件，若可访问可能泄露密钥。",
+        "/.git/config": "Git 配置文件，若可访问可能泄露仓库信息。",
+        "/backup.zip": "备份压缩包，若可访问可能泄露源码或数据。"
+    }
+
+    attention_paths = {
+        "/admin": "后台路径，若返回 200，需要确认是否有认证保护。"
+    }
+
+    exposed_paths = []
+    review_paths = []
+    skipped_paths = []
+
+    all_paths = {}
+    all_paths.update(public_info_paths)
+    all_paths.update(sensitive_file_paths)
+    all_paths.update(attention_paths)
+
+    for path, description in all_paths.items():
+        target_url = urljoin(url, path)
+
+        try:
+            response = requests.get(
+                target_url,
+                timeout=timeout,
+                allow_redirects=False,
+                headers={
+                    "User-Agent": "WebSecAutoGenAgent-Learning/0.1"
+                }
+            )
+        except requests.exceptions.RequestException as error:
+            skipped_paths.append(f"{path}：请求失败，{error}")
+            continue
+
+        status_code = response.status_code
+
+        if status_code == 200:
+            if is_soft_404_page(response.text):
+                continue
+
+            if path in sensitive_file_paths:
+                exposed_paths.append(
+                    f"{path}：返回 200，{description}"
+                )
+            else:
+                review_paths.append(
+                    f"{path}：返回 200，{description}"
+                )
+
+        elif status_code in [401, 403]:
+            review_paths.append(
+                f"{path}：返回 {status_code}，路径存在但访问受限。"
+            )
+
+    if exposed_paths:
+        detail_parts = [
+            "发现可能暴露的敏感文件：" + "；".join(exposed_paths)
+        ]
+
+        if review_paths:
+            detail_parts.append(
+                "其他需要人工确认的路径：" + "；".join(review_paths)
+            )
+
+        if skipped_paths:
+            detail_parts.append(
+                "部分路径请求失败：" + "；".join(skipped_paths)
+            )
+
+        return {
+            "name": "敏感路径检查",
+            "status": "需关注",
+            "risk": "高危",
+            "detail": " ".join(detail_parts),
+            "suggestion": "请优先确认 .env、.git、备份包等敏感文件是否被公开访问，并在服务器层面禁止访问这些路径。"
+        }
+
+    if review_paths:
+        detail_parts = [
+            "发现需要人工确认的公开路径：" + "；".join(review_paths)
+        ]
+
+        if skipped_paths:
+            detail_parts.append(
+                "部分路径请求失败：" + "；".join(skipped_paths)
+            )
+
+        return {
+            "name": "敏感路径检查",
+            "status": "需关注",
+            "risk": "低危",
+            "detail": " ".join(detail_parts),
+            "suggestion": "请确认这些公开文件或路径是否符合预期。对于 /admin 等后台路径，应确保存在认证、权限控制和必要的访问限制。"
+        }
+
+    if skipped_paths:
+        return {
+            "name": "敏感路径检查",
+            "status": "需关注",
+            "risk": "低危",
+            "detail": "未发现敏感文件直接暴露，但部分路径请求失败：" + "；".join(skipped_paths),
+            "suggestion": "建议在网络稳定或具备授权环境下重新检查这些路径。"
+        }
+
+    return {
+        "name": "敏感路径检查",
+        "status": "通过",
+        "risk": "低危",
+        "detail": "未发现常见敏感文件可直接访问。",
+        "suggestion": "继续保持敏感文件不可公开访问，并避免将 .env、.git、备份包等文件放在 Web 根目录。"
+    }
+
+
+

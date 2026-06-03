@@ -7,6 +7,7 @@ from websec_autogen_agent.tools.security_checks import (
     check_https,
     check_security_headers,
     check_cookie_security,
+    check_sensitive_paths,
 )
 
 
@@ -50,10 +51,27 @@ def main():
 
     checks = [
         check_url_accessibility(homepage),
+    ]
+
+    if not homepage["ok"]:
+        print("\n基础安全检查结果：")
+
+        for check in checks:
+            print(f"\n{check['name']}")
+            print(f"状态：{check['status']}")
+            print(f"风险：{check['risk']}")
+            print(f"细节：{check['detail']}")
+            print(f"建议：{check['suggestion']}")
+
+        print("\n首页无法访问，已停止后续检查！")
+        return
+
+    checks.extend([
         check_https(result["url"]),
         check_security_headers(homepage),
         check_cookie_security(homepage),
-    ]
+        check_sensitive_paths(result["url"]),
+    ])
 
     print("\n基础安全检查结果：")
 
