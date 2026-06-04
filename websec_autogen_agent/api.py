@@ -50,6 +50,7 @@ def build_public_audit_response(audit_result: dict, report_path: str | None = No
         "checks": audit_result["checks"],
         "advice": audit_result["advice"],
         "llm_advice": audit_result.get("llm_advice"),
+        "autogen_review": audit_result.get("autogen_review"),
         "brief_message": format_brief_message(audit_result, report_path),
         "stopped_reason": audit_result["stopped_reason"],
         "report_path": report_path,

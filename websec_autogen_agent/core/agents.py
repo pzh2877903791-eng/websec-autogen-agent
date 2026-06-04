@@ -9,6 +9,7 @@ from websec_autogen_agent.tools.security_checks import (
 )
 
 from websec_autogen_agent.core.llm import generate_deepseek_advice
+from websec_autogen_agent.core.autogen_workflow import run_autogen_audit_review
 
 def run_security_audit(raw_url:str, enable_llm: bool = True) -> dict:
     normalize_result = normalize_url(raw_url)
@@ -27,6 +28,7 @@ def run_security_audit(raw_url:str, enable_llm: bool = True) -> dict:
             "summary": summary,
             "advice": advice,
             "llm_advice": None,
+            "autogen_review": None,
             "error":normalize_result["error"],
             "stopped_reason":"URL 校验失败，无法继续审计。"
         }
@@ -51,6 +53,7 @@ def run_security_audit(raw_url:str, enable_llm: bool = True) -> dict:
             "summary": summary,
             "advice": advice,
             "llm_advice": None,
+            "autogen_review": None,
             "error":normalize_result["error"],
             "stopped_reason":"首页无法访问，已停止后续检查。"
         }
@@ -76,6 +79,20 @@ def run_security_audit(raw_url:str, enable_llm: bool = True) -> dict:
             "rule_based_advice": advice,
         })
 
+    autogen_review = None
+
+    autogen_input = {
+        "target": raw_url,
+        "normalized_url": normalized_url,
+        "checks": checks,
+        "summary": summary,
+        "advice": advice,
+        "llm_advice": llm_advice,
+        "stopped_reason": None,
+    }
+
+    autogen_review = run_autogen_audit_review(autogen_input)
+
     return {
         "ok": True,
         "target": raw_url,
@@ -85,6 +102,7 @@ def run_security_audit(raw_url:str, enable_llm: bool = True) -> dict:
         "summary": summary,
         "advice": advice,
         "llm_advice": llm_advice,
+        "autogen_review": autogen_review,
         "error": None,
         "stopped_reason": None,
     }

@@ -62,6 +62,20 @@ def format_markdown_report(audit_result: dict) -> str:
         lines.append("")
         section_number += 1
 
+    if audit_result.get("autogen_review"):
+        lines.append(f"## {section_number}. AutoGen 多角色审计复核")
+        lines.append("")
+
+        autogen_review = audit_result["autogen_review"].strip()
+        autogen_title = "## AutoGen 多角色审计复核"
+
+        if autogen_review.startswith(autogen_title):
+            autogen_review = autogen_review[len(autogen_title):].strip()
+
+        lines.append(autogen_review)
+        lines.append("")
+        section_number += 1
+
     if audit_result["stopped_reason"]:
         lines.append(f"## {section_number}. 提前停止原因")
         lines.append("")
