@@ -103,7 +103,10 @@ def build_feishu_audit_post(audit_result: dict, report_path: str | None = None) 
             add_line(f"{index}. {item}")
 
     if audit_result.get("llm_advice"):
-        add_line("DeepSeek 综合建议已生成，建议查看完整报告。")
+        add_line("DeepSeek 综合建议：已生成，完整内容请查看 API 或 Markdown 报告。")
+
+    if audit_result.get("autogen_review"):
+        add_line("AutoGen 多角色复核：已生成，完整内容请查看 API 或 Markdown 报告。")
 
     if report_path:
         add_line(f"完整报告已生成，本地路径：{report_path}")

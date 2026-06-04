@@ -79,6 +79,10 @@ def main():
         print("\nDeepSeek 综合建议：")
         print(audit_result["llm_advice"])
 
+    if audit_result.get("autogen_review"):
+        print("\nAutoGen 多角色审计复核：")
+        print(audit_result["autogen_review"])
+
     report = format_markdown_report(audit_result)
 
     report_target = audit_result["normalized_url"] or audit_result["target"]
